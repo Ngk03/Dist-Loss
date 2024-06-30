@@ -1,4 +1,4 @@
-![image](https://github.com/Ngk03/AI-vascular-age/assets/122763773/0625875b-39ab-4e63-bd7a-ff9d8a6ed7b4)# Deep Imbalanced Regression to Estimate Vascular Age from PPG Data: A Novel Digital Biomarker for Cardiovascular Health
+# Deep Imbalanced Regression to Estimate Vascular Age from PPG Data: A Novel Digital Biomarker for Cardiovascular Health
 
 ## Introduction
 Welcome to our repository where we provide the PyTorch implementation of the **Dist loss**. This loss function, described in detail [here](https://arxiv.org/abs/2406.14953), leverages data distribution priors to effectively address deep imbalanced regression tasks, such as estimating vascular age from PPG data.
