@@ -16,7 +16,7 @@ To illustrate the usage of the **Dist loss**, we have included a straightforward
 
 2. **`step`**: This parameter defines the interval between discrete labels in the estimated distribution. For instance, in age estimation, a step value of 1 is appropriate, whereas a value like 10,000 might be suitable for predicting house prices. The step size directly impacts the granularity of your task.
 
-3. **`min_label` and `max_label`**: These parameters define the theoretical range of possible labels. Any label values falling below `min_label` or above `max_label` will be assigned a probability of zero in the output distribution. Importantly, these are **not** the minimum and maximum values present in your dataset. For example, with a dataset ranging from 40 to 80 years in age, `min_label` and `max_label` might be set to 20 and 100 years, respectively.
+3. **`min_label`** and **`max_label`**: These parameters define the theoretical range of possible labels. Any label values falling below `min_label` or above `max_label` will be assigned a probability of zero in the output distribution. Importantly, these are **not** the minimum and maximum values present in your dataset. For example, with a dataset ranging from 40 to 80 years in age, `min_label` and `max_label` might be set to 20 and 100 years, respectively.
 
 4. **`drop_last`**: This parameter should be set to **True** in your training set to avoid mismatched tensor shapes, which can lead to errors.
 
