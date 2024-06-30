@@ -22,6 +22,9 @@ To illustrate the usage of the **Dist loss**, we have included a straightforward
 
 ## Acknowledgement
 Many thanks for these repos for their great contribution!
+
 <https://github.com/YyzHarry/imbalanced-regression>
+
 <https://github.com/BorealisAI/ranksim-imbalanced-regression>
+
 <https://github.com/jiawei-ren/BalancedMSE>
