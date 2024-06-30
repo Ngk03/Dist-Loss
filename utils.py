@@ -1,77 +1,100 @@
 import numpy as np
-import torch
 from scipy.stats import gaussian_kde
-from torch.utils.data import Dataset
-import os  
-import shutil
+from typing import Union, Callable
 
-def normalization(signal:np.ndarray, axis:int=1, eps:float=1e-8):
+def normalization(signal: np.ndarray, axis: int = 1, eps: float = 1e-8) -> np.ndarray:
     """
     Normalize the signal.
 
     Parameters:
-        signal: The signal to be normalized.
-        axis: The axis along which to perform the normalization. Default is 1.
-        eps: A small value added to the denominator to avoid division by zero. Default is 1e-8.
+        signal (np.ndarray): The signal to be normalized.
+        axis (int): The axis along which to perform the normalization. Default is 1.
+        eps (float): A small value added to the denominator to avoid division by zero. Default is 1e-8.
+
+    Returns:
+        np.ndarray: The normalized signal.
     """
     mean_signal = signal.mean(axis=axis, keepdims=True)
-    std_signal = signal.mean(axis=axis, keepdims=True)
+    std_signal = signal.std(axis=axis, keepdims=True)
     normalized_signal = (signal - mean_signal) / (std_signal + eps)
     return normalized_signal
 
-def get_ld(labels:np.ndarray, bw_method=0.5, min_label=21, max_label=100):
+def get_label_distribution(labels: np.ndarray, 
+                           bw_method: Union[str, float, Callable[[gaussian_kde], float], None] = 0.5, 
+                           min_label: Union[int, float] = 21, 
+                           max_label: Union[int, float] = 100, 
+                           step: float = 1.0) -> np.ndarray:
     """
     Get the label distribution using kernel density estimation.
 
     Parameters:
-        labels: The label array to be operated.
-        bw_method: The bandwidth of the kernel distribution estimator. 
-        min_label: The minimum of the label. Values below this will be assigned a zero value.
-        max_label: The maximum of the label. Values above this will be assigned a zero value. 
-    """
-    kde = gaussian_kde(labels, bw_method=bw_method)
-    x = np.arange(min_label, max_label+1)
-    density_estimation = kde(x)
-    return density_estimation
-
-def get_batch_label_distribution(density:np.ndarray, batch_size:int, mode='cumsum', range_res=30) -> np.ndarray:
-    """
-    Acquire the label distribution of one batch according to the kernel density estimation.
-
-    Parameters:
-        density (np.ndarray): The estimated density according to the kernel density estimation.
-            This 1D array represents the density values for each label.
-        batch_size (int): The number of samples in a batch.
+        labels (np.ndarray): The label array to be operated.
+        bw_method (Union[str, float, Callable[[gaussian_kde], float], None]): 
+            The method used to calculate the estimator bandwidth. This can be 'scott', 'silverman', a scalar constant or a callable.
+            If a scalar, this will be used directly as kde.factor. If a callable, it should take a gaussian_kde instance as only parameter and return a scalar.
+            If None (default), nothing happens; the current kde.covariance_factor method is kept. 
+            See details at https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.gaussian_kde.set_bandwidth.html.
+        min_label (Union[int, float]): The theoretical minimum of the label. Values below this will be assigned a zero probability.
+        max_label (Union[int, float]): The theoretical maximum of the label. Values above this will be assigned a zero probability.
+        step (float): The interval between discrete labels in the estimated distribution.
 
     Returns:
-        np.ndarray: An array representing the label distribution for one batch, ensuring it sums up to 'batch_size'.
+        np.ndarray: The estimated density for the labels.
+
+    Note:
+        `min_label` and `max_label` represent the theoretical range of possible labels. 
+        Any label values below `min_label` or above `max_label` will have an assigned probability of zero in the output distribution.
+        `step` defines the resolution of the label distribution.
+    """
+    # Ensure the labels are within the theoretical range
+    labels = labels[(labels >= min_label) & (labels <= max_label)]
+
+    # Perform kernel density estimation
+    kde = gaussian_kde(labels, bw_method=bw_method)
+    
+    # Create an array of possible label values within the theoretical range with the specified step
+    x = np.arange(min_label, max_label + step, step)
+    
+    # Estimate the density for these label values
+    density_estimation = kde(x)
+
+    return density_estimation
+
+def get_batch_label_distribution(density: np.ndarray, batch_size: int, region_adjustment: float = 0.5) -> np.ndarray:
+    """
+    Acquire the label distribution of one batch based on kernel density estimation.
+
+    Parameters:
+        density (np.ndarray): Estimated density values for each label.
+        batch_size (int): Number of samples in the batch.
+        region_adjustment (float): Adjustment factor for distributing residuals. Default is 0.5.
+
+    Returns:
+        np.ndarray: Label distribution for the batch, summing up to 'batch_size'.
 
     Explanation:
         This function calculates the label distribution for a batch based on the estimated density values.
-        It first determines the number of samples for each label by scaling the density values with 'batch_size'.
-        Then, it distributes these samples across the labels ensuring that the total sum matches 'batch_size'.
-        If there's a residual difference due to rounding, it adjusts the distribution to match 'batch_size'.
+        It scales the density values with 'batch_size' to determine the number of samples for each label.
+        The distribution ensures that the total sum matches 'batch_size'.
+        Residual differences due to rounding are adjusted to meet 'batch_size', using 'region_adjustment' to control the range.
     """
     num_density = density * batch_size
+    range_res = int(region_adjustment * len(density))
+    batch_label_distribution = np.zeros_like(num_density)
 
-    if mode == 'cumsum':
-        batch_label_distribution = np.zeros_like(num_density)
-    else:
-        batch_label_distribution = np.ones_like(num_density)
+    forward_cumsum = num_density.cumsum()
+    backward_cumsum = num_density[::-1].cumsum()[::-1]
+    forward_index = np.searchsorted(forward_cumsum, 1)
+    backward_index = len(backward_cumsum) - np.searchsorted(backward_cumsum[::-1], 1) - 1
 
-    forward_cumsum = num_density.cumsum(axis=0)
-    backward_cumsum = num_density[-1::-1].cumsum(axis=0)
-    forward_index = np.where(forward_cumsum >= 1)[0][0]
-    backward_index = -1 * np.where(backward_cumsum >= 1)[0][0] - 1
-    forward_index_cumsum = forward_cumsum[forward_index]
-    backward_index_cumsum = backward_cumsum[-1*(backward_index+1)]
+    forward_index_cumsum = round(forward_cumsum[forward_index])
+    backward_index_cumsum = round(backward_cumsum[backward_index])
 
-    batch_label_distribution[forward_index] = forward_index_cumsum.round()
-    batch_label_distribution[forward_index+1:backward_index] = num_density[forward_index+1:backward_index].round()
-    batch_label_distribution[backward_index] = backward_index_cumsum.round()
-
-    sum_batch_label_distribution = batch_label_distribution.sum()
-    res_sum = batch_size - int(sum_batch_label_distribution)
+    batch_label_distribution[forward_index] = forward_index_cumsum
+    batch_label_distribution[forward_index + 1:backward_index] = np.round(num_density[forward_index + 1:backward_index])
+    batch_label_distribution[backward_index] = backward_index_cumsum
+    
+    res_sum = batch_size - int(batch_label_distribution.sum())
     maximum_index = batch_label_distribution.argmax()
 
     if abs(res_sum) <= range_res:
@@ -85,28 +108,33 @@ def get_batch_label_distribution(density:np.ndarray, batch_size:int, mode='cumsu
         right_index = left_index + range_res
         batch_label_distribution[left_index:right_index] += iters * np.sign(res_sum)
         batch_label_distribution[maximum_index] += remainder
-    batch_label_distribution.sum()
+
     return batch_label_distribution
 
-def get_batch_distribution_labels(density:np.ndarray, batch_size:int, min_label:int) -> np.ndarray:
-    """"
-    Acquire the labels following the label distribution of one batch.
-
-    Parameters: 
-        density (np.ndarray): The estimated density according to the kernel density estimation.
-            This 1D array represents the density values for each label.
-        batch_size (int): The number of samples in a batch.
-        min_label (int): The minimum of the labels.
+def get_batch_theoretical_labels(density: np.ndarray, batch_size: int, min_label: int) -> np.ndarray:
     """
-    batch_distribution_label = np.zeros((batch_size))
-    batch_label_distribution = get_batch_label_distribution(density, batch_size)
-    cumsum_batch_label_distribution = batch_label_distribution.cumsum(axis=0).astype(int)
+    Generate theoretical labels for a batch based on a theoretical label distribution estimated by kernel density estimation.
 
-    for i, num in enumerate(batch_label_distribution):
-        if i == 0:
-            before_cumsum = 0
-        else:
-            before_cumsum = cumsum_batch_label_distribution[i-1]
-        batch_distribution_label[before_cumsum:before_cumsum+int(num)] = i + min_label
-    
-    return batch_distribution_label
+    Parameters:
+        density (np.ndarray): The estimated density values for each label obtained from kernel density estimation.
+                              This 1D array represents the density values for each possible label.
+        batch_size (int): The number of samples in the batch to generate theoretical labels for.
+        min_label (int): The minimum label value to start assigning from.
+
+    Returns:
+        np.ndarray: An array of theoretical labels following the batch label distribution.
+    """
+    batch_label_distribution = get_batch_label_distribution(density, batch_size)
+    cumulative_distribution = np.cumsum(batch_label_distribution).astype(int)
+
+    batch_theoretical_labels = np.zeros(batch_size, dtype=int)
+    current_label = min_label
+    num_labels = len(density)
+
+    for i in range(num_labels):
+        start_index = 0 if i == 0 else cumulative_distribution[i - 1]
+        end_index = cumulative_distribution[i]
+        batch_theoretical_labels[start_index:end_index] = current_label
+        current_label += 1
+
+    return batch_theoretical_labels
