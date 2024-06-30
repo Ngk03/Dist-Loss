@@ -57,6 +57,7 @@ def get_label_distribution(labels: np.ndarray,
     
     # Estimate the density for these label values
     density_estimation = kde(x)
+    density_estimation /= density_estimation.sum()
 
     return density_estimation
 
@@ -111,7 +112,7 @@ def get_batch_label_distribution(density: np.ndarray, batch_size: int, region_ad
 
     return batch_label_distribution
 
-def get_batch_theoretical_labels(density: np.ndarray, batch_size: int, min_label: int) -> np.ndarray:
+def get_batch_theoretical_labels(density: np.ndarray, batch_size: int, min_label: int, step: float = 0.5) -> np.ndarray:
     """
     Generate theoretical labels for a batch based on a theoretical label distribution estimated by kernel density estimation.
 
@@ -120,6 +121,7 @@ def get_batch_theoretical_labels(density: np.ndarray, batch_size: int, min_label
                               This 1D array represents the density values for each possible label.
         batch_size (int): The number of samples in the batch to generate theoretical labels for.
         min_label (int): The minimum label value to start assigning from.
+        step (float): The interval between discrete labels in the estimated distribution.
 
     Returns:
         np.ndarray: An array of theoretical labels following the batch label distribution.
@@ -127,7 +129,7 @@ def get_batch_theoretical_labels(density: np.ndarray, batch_size: int, min_label
     batch_label_distribution = get_batch_label_distribution(density, batch_size)
     cumulative_distribution = np.cumsum(batch_label_distribution).astype(int)
 
-    batch_theoretical_labels = np.zeros(batch_size, dtype=int)
+    batch_theoretical_labels = np.zeros(batch_size)
     current_label = min_label
     num_labels = len(density)
 
@@ -135,6 +137,6 @@ def get_batch_theoretical_labels(density: np.ndarray, batch_size: int, min_label
         start_index = 0 if i == 0 else cumulative_distribution[i - 1]
         end_index = cumulative_distribution[i]
         batch_theoretical_labels[start_index:end_index] = current_label
-        current_label += 1
+        current_label += step
 
     return batch_theoretical_labels
