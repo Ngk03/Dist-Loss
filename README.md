@@ -7,15 +7,7 @@ The figure below demonstrates the effectiveness of the **Dist loss** in addressi
 
 ![Alt text](assets/performance.png)
 
-| Method             | r     | MAE    | RMSE   | Overlap ratio | Weighted MAE | Weighted RMSE | MAE / Overlap ratio | RMSE / Overlap ratio |
-|--------------------|-------|--------|--------|---------------|--------------|---------------|---------------------|----------------------|
-| Plain              | 0.637 | 12.820 | 13.786 | 0.015         | 6.522        | 7.524         | 865.377             | 930.543              |
-| + LDS              | 0.683 | 10.585 | 12.598 | 0.056         | 5.270        | 6.657         | 185.737             | 221.049              |
-| + FDS              | 0.644 | 11.493 | 13.603 | 0.098         | 6.682        | 9.013         | 116.356             | 137.724              |
-| + LDS & FDS        | 0.682 | 10.947 | 12.766 | 0.021         | 5.416        | 6.694         | 502.807             | 586.384              |
-| + Ranksim          | 0.618 | 11.559 | 13.475 | 0.032         | 5.974        | 7.337         | 355.652             | 414.581              |
-| + Balanced MSE     | 0.606 | 11.204 | 13.258 | 0.085         | 6.064        | 7.763         | 130.907             | 154.901              |
-| + Ours             | 0.686 |  9.495 | 12.029 | 0.158         | 4.963        | 6.851         |  59.846             |  75.815              |
+![Alt text](assets/few_shot_region.png)
 
 ## Usage
 To illustrate the usage of the **Dist loss**, we have included a straightforward example in the `example.ipynb` notebook, which demonstrates its application in a synthetic regression task. When utilizing this loss function, several key parameters must be carefully considered:
