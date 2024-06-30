@@ -28,3 +28,5 @@ Many thanks for these repos for their great contribution!
 <https://github.com/BorealisAI/ranksim-imbalanced-regression>
 
 <https://github.com/jiawei-ren/BalancedMSE>
+
+<https://github.com/google-research/fast-soft-sort>
