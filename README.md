@@ -7,7 +7,7 @@ The figure below demonstrates the effectiveness of the **Dist loss** in addressi
 
 ![Alt text](assets/performance.png)
 
-![Alt text](assets/few_shot_region.png)
+![Alt text](assets/Few_shot_region.png)
 
 ## Usage
 To illustrate the usage of the **Dist loss**, we have included a straightforward example in the `example.ipynb` notebook, which demonstrates its application in a synthetic regression task. When utilizing this loss function, several key parameters must be carefully considered:
